@@ -1,0 +1,56 @@
+version: '3'  
+
+services:
+
+  proxy:
+    image: jwilder/nginx-proxy:alpine
+    container_name: nextcloud-proxy
+    networks:
+      - nextcloud_network
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./proxy/conf.d:/etc/nginx/conf.d:rw
+      - ./proxy/vhost.d:/etc/nginx/vhost.d:rw
+      - ./proxy/html:/usr/share/nginx/html:rw
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    restart: unless-stopped
+
+  nextclouddb:
+    image: mariadb
+    container_name: nextcloud-mariadb
+    networks:
+      - nextcloud_network
+    volumes:
+      - nextclouddb:/var/lib/mysql
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - MYSQL_ROOT_PASSWORD=secret
+      - MYSQL_PASSWORD=mysql
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+    restart: unless-stopped
+  nextcloud:
+    image: nextcloud:latest
+    container_name: nextcloud-app
+    networks:
+      - nextcloud_network
+    depends_on:
+      - proxy
+      - nextclouddb
+    volumes:
+      - nextcloud:/var/www/html
+      - ./nextcloud_app/config:/var/www/html/config
+      - ./nextcloud_app/custom_apps:/var/www/html/custom_apps
+      - ./nextcloud_app/data:/var/www/html/data
+      - ./nextcloud_app/themes:/var/www/html/themes
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
+volumes:
+  nextcloud:
+  nextclouddb:
+
+networks:
+  nextcloud_network:
